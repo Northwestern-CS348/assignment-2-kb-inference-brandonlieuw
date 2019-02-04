@@ -218,3 +218,4 @@ Represents a knowledge base and implements the three actions described in the wr
 #### InferenceEngine
 
 Represents an inference engine. Implements forward-chaining in this lab.
+

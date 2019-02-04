@@ -116,6 +116,45 @@ class KnowledgeBase(object):
             print("Invalid ask:", fact.statement)
             return []
 
+    #helper to remove facts/rules
+    def kb_remove(self, fr):
+
+        #checks to see if supported by a fact
+        # hasFact = False
+        # for sup in fr.supported_by:
+        #     if isinstance(sup, Fact):
+        #         hasFact = True
+
+
+
+        if not fr.asserted and not fr.supported_by:
+            if isinstance(fr, Fact):
+                for x in self.facts:
+                    if x==fr:
+                        self.facts.remove(x)
+            else:
+                for x in self.rules:
+                    if x==fr:
+                        self.rules.remove(x)
+
+
+        for r in fr.supports_rules:
+            for pair in r.supported_by:
+                if (not pair[0].asserted and not pair[0].supported_by) or (not pair[1].asserted and not pair[1].supported_by):
+                    r.supported_by.remove(pair)
+                    self.kb_remove(pair[0])
+                    self.kb_remove(pair[1])
+            self.kb_remove(r)
+
+        for f in fr.supports_facts:
+            for pair in f.supported_by:
+                if (not pair[0].asserted and not pair[0].supported_by) or (not pair[1].asserted and not pair[1].supported_by):
+                    f.supported_by.remove(pair)
+                    self.kb_remove(pair[0])
+                    self.kb_remove(pair[1])
+            self.kb_remove(f)
+
+
     def kb_retract(self, fact):
         """Retract a fact from the KB
 
@@ -128,7 +167,17 @@ class KnowledgeBase(object):
         printv("Retracting {!r}", 0, verbose, [fact])
         ####################################################
         # Student code goes here
-        
+        if isinstance(fact, Fact):
+            factInKB=None
+            for x in self.facts:
+                bindings=match(fact.statement, x.statement, None)
+                if isinstance(bindings, Bindings):
+                    factInKB = x
+
+            if isinstance(factInKB, Fact):
+                if factInKB.asserted:
+                    factInKB.asserted = False
+                    self.kb_remove(factInKB)
 
 class InferenceEngine(object):
     def fc_infer(self, fact, rule, kb):
@@ -146,3 +195,20 @@ class InferenceEngine(object):
             [fact.statement, rule.lhs, rule.rhs])
         ####################################################
         # Student code goes here
+        bindings = match(fact.statement, rule.lhs[0], None)
+        if isinstance(bindings, Bindings):
+            if len(rule.lhs)==1:
+                new_fact = Fact(instantiate(rule.rhs,bindings),[[fact, rule]])
+                rule.supports_facts.append(new_fact)
+                fact.supports_facts.append(new_fact)
+                kb.kb_add(new_fact)
+            else:
+                new_rule = Rule([[], instantiate(rule.rhs, bindings)], [[fact, rule]])
+                for x in range(1, len(rule.lhs)):
+                    new_rule.lhs.append(instantiate(rule.lhs[x], bindings))
+                rule.supports_rules.append(new_rule)
+                fact.supports_rules.append(new_rule)
+                kb.kb_add(new_rule)
+
+
+
